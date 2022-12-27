@@ -1,0 +1,37 @@
+Layout 
+
+We want to test all of the different combinations of indicators and see which provides the best trading strategy
+
+- List of methods to apply and use that will cycle through them all with different combinations 
+- 
+- 
+
+
+class Strategy:
+	self.account
+	self.long_conditions
+	self.short_conditions
+	act(i, price):
+		if buy condition:
+			if long:
+				do nothing, or long more
+			if short:
+				close trade
+			open trade
+		if short condition:
+			if short:
+				do nothing, or short more
+			if long:
+				close trade
+			open trade
+
+
+form strategies
+
+for row in df:
+	for strategy:
+		strategy.act
+
+# Form report
+for strat in strategies:
+	print out / append report
