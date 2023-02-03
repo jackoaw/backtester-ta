@@ -6,25 +6,35 @@ global_starting_money = 10000
 
 class Strategy:
 
-	def __init__(self, long_conditions, 
-		short_conditions, 
+	def __init__(self, 
+		conditions, 
+		# close_conditions, 
 		starting_money=global_starting_money,
 		risk_percent=.2,
-		buy_args={},
-		sell_args={}):
+		open_args={},
+		close_args={}):
 
-		self.longcs = long_conditions
-		self.shortcs = short_conditions
+		# self.longcs = long_conditions
+		# self.shortcs = short_conditions
+		self.conditions = conditions
+		self.openclose = conditions
 		self.account = Account(starting_money, risk_percent)
-		self.buy_args = buy_args
-		self.sell_args = sell_args
+		self.open_args = open_args
+		self.close_args = close_args
+		# self.currentLong
 
 	def act(self, i, row):
 		# Start with just one long and short condition for now.
-		if self.longcs(row, i, self.buy_args):
-			self.account.buy(row['Close'])
-		elif self.shortcs(row, i, self.sell_args):
-			self.account.sell(row['Close'])
+		if self.conditions[0](row, i, self.open_args):
+			if self.open_args['buy']:
+				self.account.buy(row['Close'])
+			else:
+				self.account.sell(row['Close'])
+		elif self.conditions[1](row, i, self.close_args):
+			if self.close_args['buy']:
+				self.account.buy(row['Close'])
+			else:
+				self.account.sell(row['Close'])
 
 
 class Account:
@@ -108,11 +118,12 @@ def main():
 
 	# Add all ta features
 	df = add_all_ta_features(
-	    df, open="Open", high="High", low="Low", close="Close", volume="Volume")
+		df, open="Open", high="High", low="Low", close="Close", volume="Volume"
+	)
 
 	# Form all of the strategies here
 	strats = [
-		Strategy(rsi, rsi, buy_args={"rsinum":30, 'lt':True}, sell_args={"rsinum":70, 'lt':False})
+		Strategy((rsi, rsi), open_args={"rsinum":70, 'lt':True, 'buy':False}, close_args={"rsinum":60, 'lt':False, 'buy':True})
 	]
 
 	# Cycle through buy_methods and check success rate
