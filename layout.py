@@ -123,7 +123,8 @@ def main():
 
 	# Form all of the strategies here
 	strats = [
-		Strategy((rsi, rsi), open_args={"rsinum":70, 'lt':True, 'buy':False}, close_args={"rsinum":60, 'lt':False, 'buy':True})
+		Strategy((rsi, rsi), open_args={"rsinum":70, 'lt':True, 'buy':False}, close_args={"rsinum":60, 'lt':False, 'buy':True}),
+		Strategy((rsi, rsi), open_args={"rsinum":30, 'lt':True, 'buy':True}, close_args={"rsinum":60, 'lt':False, 'buy':False})
 	]
 
 	# Cycle through buy_methods and check success rate
