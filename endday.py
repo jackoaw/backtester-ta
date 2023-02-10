@@ -1,0 +1,1 @@
+# Strategy to sell reversal for 5m at end of day

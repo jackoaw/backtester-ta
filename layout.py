@@ -2,6 +2,7 @@ import pandas as pd
 from ta import add_all_ta_features
 from ta.utils import dropna
 import np
+from multiprocessing import Process
 
 global_starting_money = 10000
 
@@ -148,7 +149,10 @@ def main():
 	lastrow = None
 	for i, row in df.iterrows():
 		for strat in strats:
-			strat.act(i, row)
+			p = Process(target=strat.act, args=(i, row))
+			p.start()
+			p.join()
+			# strat.act(i, row)
 		lastrow = row
 
 	success_strategies = []

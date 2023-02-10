@@ -36,3 +36,4 @@ class TDAmeritradeAPI:
 			askPrice = response[symbol]["askPrice"],
 			bidPrice = response[symbol]["bidPrice"]
 		) 
+		

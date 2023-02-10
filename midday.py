@@ -1,0 +1,1 @@
+# Strategy to sell reversal midday on mildly directinoal days
