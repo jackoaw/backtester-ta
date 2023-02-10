@@ -149,10 +149,7 @@ def main():
 	lastrow = None
 	for i, row in df.iterrows():
 		for strat in strats:
-			p = Process(target=strat.act, args=(i, row))
-			p.start()
-			p.join()
-			# strat.act(i, row)
+			strat.act(i, row)
 		lastrow = row
 
 	success_strategies = []
