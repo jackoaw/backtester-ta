@@ -25,6 +25,7 @@ class Strategy:
 		self.open_args = open_args
 		self.close_args = close_args
 		self.name = name
+		self.percent_change = 0
 		# self.currentLong
 
 	def act(self, i, row):
@@ -116,6 +117,28 @@ def ema_slow(row, i, args={}, **kwargs):
 
 # Combo one buy method with one sell method?
 
+def execute_strategy(strat, df):
+	# First the trading
+	lastrow = None
+	for i, row in df.iterrows():
+		strat.act(i, row)
+	lastrow = row
+
+	# Then the summary
+	if strat.account.holdnum > 0:
+		strat.account.sell(lastrow['Close'])
+	elif strat.account.holdnum < 0:
+		strat.account.buy(lastrow['Close'])
+
+	# Define Success here
+	strat.percent_change = (strat.account.money/global_starting_money - 1)*100
+	if strat.percent_change >= 1:
+		return True
+
+	return False
+
+
+
 def main():
 	# Load datas
 	df = pd.read_csv('SPY.csv', sep=',')
@@ -145,32 +168,17 @@ def main():
 		Strategy("Slow EMA Trade", (ema_slow, ema_slow), open_args={"above":False, 'buy':False}, close_args={"above":True, 'buy':True})
 	]
 
-	# Cycle through buy_methods and check success rate
-	lastrow = None
-	for i, row in df.iterrows():
-		for strat in strats:
-			strat.act(i, row)
-		lastrow = row
-
 	success_strategies = []
 
-	for strat in strats:
-		# Close the account first
-		if strat.account.holdnum > 0:
-			strat.account.sell(lastrow['Close'])
-		elif strat.account.holdnum < 0:
-			strat.account.buy(lastrow['Close'])
-
-		percent_change = (strat.account.money/global_starting_money - 1)*100
-		if percent_change >= 1:
-			# print("Account Money: %f"%strat.account.money)
-			# print("Strategy %s generated a %0.2f%% return"% (strat.name, percent_change))
+	# Cycle through buy_methods and check success rate
+	for strat in strats_example:
+		if execute_strategy(strat, df):
 			success_strategies.append(strat)
 
 	sorted_success_strategies = sorted(success_strategies, key=lambda x: x.account.money, reverse=True)
 
 	for strat in success_strategies:
-		print("Strategy %s generated a %0.2f%% return"% (strat.name, percent_change))
+		print("Strategy %s generated a %0.2f%% return"% (strat.name, strat.percent_change))
 
 	# Final step is to close all account positions, or just report the total
 
