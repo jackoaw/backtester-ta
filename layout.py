@@ -2,9 +2,12 @@ import pandas as pd
 from ta import add_all_ta_features
 from ta.utils import dropna
 import np
-from multiprocessing import Process
+from multiprocessing import Process, Pool
+import sys
 
 global_starting_money = 10000
+MULTICORE = False
+CORS_NUM = 12
 
 class Strategy:
 
@@ -26,6 +29,7 @@ class Strategy:
 		self.close_args = close_args
 		self.name = name
 		self.percent_change = 0
+		self.trade_count = 0
 		# self.currentLong
 
 	def act(self, i, row):
@@ -35,11 +39,13 @@ class Strategy:
 				self.account.buy(row['Close'])
 			else:
 				self.account.sell(row['Close'])
+			self.trade_count += 1
 		elif self.conditions[1](row, i, self.close_args):
 			if self.close_args['buy']:
 				self.account.buy(row['Close'])
 			else:
 				self.account.sell(row['Close'])
+			self.trade_count += 1
 
 
 class Account:
@@ -124,7 +130,7 @@ def execute_strategy(strat, df):
 		strat.act(i, row)
 	lastrow = row
 
-	# Then the summary
+	# Then the Closing
 	if strat.account.holdnum > 0:
 		strat.account.sell(lastrow['Close'])
 	elif strat.account.holdnum < 0:
@@ -132,10 +138,18 @@ def execute_strategy(strat, df):
 
 	# Define Success here
 	strat.percent_change = (strat.account.money/global_starting_money - 1)*100
-	if strat.percent_change >= 1:
-		return True
 
-	return False
+	# if False:
+	# 	return strat
+	# else:
+	# Have at least two trades
+	if strat.percent_change >= 1 and strat.trade_count/2 > 2:
+		# print("Strategy %s generated a %0.2f%% return"% (strat.name, strat.percent_change))
+		print('w', end='', flush=True)
+		return True
+	else:
+		print('f', end='', flush=True)
+		return False
 
 
 
@@ -154,8 +168,8 @@ def main():
 	strats = []
 
 	# Form all of the RSI Trades
-	for x in range(0,100):
-		for y in range(0,100):
+	for x in range(10,90):
+		for y in range(10, 90):
 			strats.append(
 				Strategy("RSI Buy %i Sell %i"%(y, x), (rsi, rsi), open_args={"rsinum":x, 'lt':True, 'buy':False}, close_args={"rsinum":y, 'lt':False, 'buy':True})
 			)
@@ -171,16 +185,22 @@ def main():
 	success_strategies = []
 
 	# Cycle through buy_methods and check success rate
-	for strat in strats_example:
-		if execute_strategy(strat, df):
-			success_strategies.append(strat)
+	if MULTICORE:
+		with Pool(processes=CORS_NUM) as pool:
+			success_strategies = [pool.apply(execute_strategy, (strat, df,)) for strat in strats]
+	else:
+		for strat in strats:
+			if execute_strategy(strat, df):
+				success_strategies.append(strat)
+
 
 	sorted_success_strategies = sorted(success_strategies, key=lambda x: x.account.money, reverse=True)
 
-	for strat in success_strategies:
+	for strat in sorted_success_strategies:
 		print("Strategy %s generated a %0.2f%% return"% (strat.name, strat.percent_change))
 
 	# Final step is to close all account positions, or just report the total
 
 
-main()
+if __name__ == '__main__': 
+	main()
