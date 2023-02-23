@@ -153,9 +153,9 @@ def execute_strategy(strat, df):
 
 
 
-def main():
+def brute_force_technical_indicators():
 	# Load datas
-	df = pd.read_csv('SPY.csv', sep=',')
+	df = pd.read_csv('data/SPY.csv', sep=',')
 
 	# Clean NaN values
 	df = dropna(df)
@@ -196,11 +196,16 @@ def main():
 
 	sorted_success_strategies = sorted(success_strategies, key=lambda x: x.account.money, reverse=True)
 
+	results_str = ""
 	for strat in sorted_success_strategies:
-		print("Strategy %s generated a %0.2f%% return"% (strat.name, strat.percent_change))
+		results_str += "Strategy %s generated a %0.2f%% return\n"% (strat.name, strat.percent_change)
+
+	#open text file
+	with open("results/brute/SPY.txt", "w") as resultfile:
+		resultfile.write(results_str)
 
 	# Final step is to close all account positions, or just report the total
 
 
 if __name__ == '__main__': 
-	main()
+	brute_force_technical_indicators()
