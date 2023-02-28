@@ -4,10 +4,14 @@ from ta.utils import dropna
 import np
 from multiprocessing import Process, Pool
 import sys
+import warnings
+warnings.filterwarnings("ignore")
 
 global_starting_money = 10000
 MULTICORE = False
 CORS_NUM = 12
+TESTMODE = False
+
 
 class Strategy:
 
@@ -153,12 +157,14 @@ def execute_strategy(strat, df):
 
 
 
-def brute_force_technical_indicators():
+def brute_force_technical_indicators(symbol):
+
 	# Load datas
-	df = pd.read_csv('data/SPY.csv', sep=',')
+	df = pd.read_csv('data/%s.csv'%symbol, sep=',')
 
 	# Clean NaN values
 	df = dropna(df)
+
 
 	# Add all ta features
 	df = add_all_ta_features(
@@ -182,6 +188,10 @@ def brute_force_technical_indicators():
 		Strategy("Slow EMA Trade", (ema_slow, ema_slow), open_args={"above":False, 'buy':False}, close_args={"above":True, 'buy':True})
 	]
 
+	if TESTMODE:
+		strats = strats_example
+
+
 	success_strategies = []
 
 	# Cycle through buy_methods and check success rate
@@ -201,11 +211,12 @@ def brute_force_technical_indicators():
 		results_str += "Strategy %s generated a %0.2f%% return\n"% (strat.name, strat.percent_change)
 
 	#open text file
-	with open("results/brute/SPY.txt", "w") as resultfile:
+	with open("results/brute/%s.txt" %symbol, "w") as resultfile:
 		resultfile.write(results_str)
 
-	# Final step is to close all account positions, or just report the total
+	print()
+
 
 
 if __name__ == '__main__': 
-	brute_force_technical_indicators()
+	main()
