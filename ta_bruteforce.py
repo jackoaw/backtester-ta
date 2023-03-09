@@ -13,24 +13,38 @@ CORS_NUM = 12
 TESTMODE = False
 
 
+# Condition class is AND by default, combining these is an OR
+class Condition:
+
+	def __init__(self, conditions : map, buy):
+		self.conditions = conditions
+		self.buy = buy
+
+	def isTrue(self, row, i):
+		for strat, cond_args in self.conditions.items():
+			if not strat(row, i, cond_args):
+				return False
+		return True
+
+	# If it's a sell, then this will return False
+	def isBuy(self):
+		return self.buy
+
+
+
 class Strategy:
 
 	def __init__(self, 
 		name,
-		conditions, 
-		# close_conditions, 
+		open_condition,
+		close_condition,
 		starting_money=global_starting_money,
-		risk_percent=.2,
-		open_args={},
-		close_args={}):
+		risk_percent=.2
+		):
 
-		# self.longcs = long_conditions
-		# self.shortcs = short_conditions
-		self.conditions = conditions
-		self.openclose = conditions
+		self.open_condition = open_condition
+		self.close_condition = close_condition
 		self.account = Account(starting_money, risk_percent)
-		self.open_args = open_args
-		self.close_args = close_args
 		self.name = name
 		self.percent_change = 0
 		self.trade_count = 0
@@ -38,14 +52,14 @@ class Strategy:
 
 	def act(self, i, row):
 		# Start with just one long and short condition for now.
-		if self.conditions[0](row, i, self.open_args):
-			if self.open_args['buy']:
+		if self.open_condition.isTrue(row, i):
+			if self.open_condition.isBuy():
 				self.account.buy(row['Close'])
 			else:
 				self.account.sell(row['Close'])
 			self.trade_count += 1
-		elif self.conditions[1](row, i, self.close_args):
-			if self.close_args['buy']:
+		elif self.close_condition.isTrue(row, i):
+			if self.close_condition.isBuy():
 				self.account.buy(row['Close'])
 			else:
 				self.account.sell(row['Close'])
@@ -156,6 +170,37 @@ def execute_strategy(strat, df):
 		return False
 
 
+def form_strats():
+	strats = []
+
+	# Form all of the RSI Trades
+	# for x in range(10,90):
+	# 	for y in range(10, 90):
+	# 		strats.append(
+	# 			Strategy("RSI Buy %i Sell %i"%(y, x), (rsi, rsi), open_args={"rsinum":x, 'lt':True, 'buy':False}, close_args={"rsinum":y, 'lt':False, 'buy':True})
+	# 		)
+
+	open_condition = Condition(conditions={
+		rsi : {"rsinum":70, 'lt':True},
+		ema_slow: {"above":False}
+	}, buy=True)
+	close_condition = Condition(conditions={
+		rsi : {"rsinum":30, 'lt':False, 'buy':True},
+		ema_slow: {"above":True, 'buy':True}
+	}, buy=False)
+
+	# Form all of the strategies here
+	strats_example = [
+		Strategy("RSI and EMA Slow", open_condition, close_condition)
+	]
+
+	if TESTMODE:
+		strats = strats_example
+	else:
+		strats = strats + strats_example
+
+	return strats
+
 
 def brute_force_technical_indicators(symbol):
 
@@ -171,26 +216,7 @@ def brute_force_technical_indicators(symbol):
 		df, open="Open", high="High", low="Low", close="Close", volume="Volume"
 	)
 
-	strats = []
-
-	# Form all of the RSI Trades
-	for x in range(10,90):
-		for y in range(10, 90):
-			strats.append(
-				Strategy("RSI Buy %i Sell %i"%(y, x), (rsi, rsi), open_args={"rsinum":x, 'lt':True, 'buy':False}, close_args={"rsinum":y, 'lt':False, 'buy':True})
-			)
-
-
-	# Form all of the strategies here
-	strats_example = [
-		Strategy("RSI High", (rsi, rsi), open_args={"rsinum":70, 'lt':True, 'buy':False}, close_args={"rsinum":60, 'lt':False, 'buy':True}),
-		Strategy("RSI Low", (rsi, rsi), open_args={"rsinum":30, 'lt':True, 'buy':True}, close_args={"rsinum":60, 'lt':False, 'buy':False}),
-		Strategy("Slow EMA Trade", (ema_slow, ema_slow), open_args={"above":False, 'buy':False}, close_args={"above":True, 'buy':True})
-	]
-
-	if TESTMODE:
-		strats = strats_example
-
+	strats = form_strats()
 
 	success_strategies = []
 
@@ -211,7 +237,8 @@ def brute_force_technical_indicators(symbol):
 		results_str += "Strategy %s generated a %0.2f%% return\n"% (strat.name, strat.percent_change)
 
 	#open text file
-	with open("results/brute/%s.txt" %symbol, "w") as resultfile:
+	
+	with open("results/brute/%s.txt" %symbol, "w+") as resultfile:
 		resultfile.write(results_str)
 
 	print()
