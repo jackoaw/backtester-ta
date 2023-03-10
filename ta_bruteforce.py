@@ -1,4 +1,5 @@
 import pandas as pd
+from copy import copy
 from ta import add_all_ta_features
 from ta.utils import dropna
 import np
@@ -6,17 +7,20 @@ from multiprocessing import Process, Pool
 import sys
 import warnings
 warnings.filterwarnings("ignore")
+from itertools import chain, combinations
 
 global_starting_money = 10000
 MULTICORE = False
 CORS_NUM = 12
 TESTMODE = False
 
+save_results_map = {}
+
 
 # Condition class is AND by default, combining these is an OR
 class Condition:
 
-	def __init__(self, conditions : map, buy):
+	def __init__(self, conditions : list, buy):
 		self.conditions = conditions
 		self.buy = buy
 
@@ -170,8 +174,74 @@ def execute_strategy(strat, df):
 		return False
 
 
+from itertools import chain, combinations
+def all_subsets(ss):
+    return chain(*map(lambda x: combinations(ss, x), range(0, len(ss)+1)))
+
+
 def form_strats():
 	strats = []
+
+	# Variable methods
+	open_ta_possibilities = [
+		rsi,
+		ema_slow	
+	]
+
+	# Form all the variations of the above methods
+	all_strat_variations = {}
+	for strat_method in open_ta_possibilities:
+		strat_name = strat_method.__qualname__
+		if strat_name == "rsi":
+			all_strat_variations['rsi'] = []
+			for boolean in [True, False]:
+				for x in range(10,90):
+					all_strat_variations['rsi'].append(
+						(rsi, {"rsinum":x, 'lt':boolean})
+					)
+		elif strat_name == "ema_slow":
+			all_strat_variations['ema_slow'] = []
+			for boolean in [True, False]:
+				all_strat_variations['ema_slow'].append(
+					(ema_slow, {"above":boolean})
+				)
+
+	conditions = []
+
+	# Form the open conditions 
+	unique_ta_combos = all_subsets(open_ta_possibilities)
+	for unique_ta_combo in list(unique_ta_combos):
+		if not unique_ta_combo:
+			continue
+		unique_ta_combo = list(unique_ta_combo)
+
+		# Recursion is your friend here, think of it as a map
+		def recursive_form_map(combos_left, conditons_list_input, buy_bool):
+			if len(combos_left) == 0:
+				return Condition(
+					conditions=conditons_list_input,
+					buy=buy_bool
+					)
+			rec_conditions = []
+
+			ta = combos_left.pop()
+			for ta_alternates in all_strat_variations[ta.__qualname__]:
+				conditons_list_input.append(ta_alternates)
+				rec_conditions.append(
+					recursive_form_map(
+						combos_left,
+						conditons_list_input,
+						buy_bool
+					)
+				)
+			return rec_conditions
+
+		conditions += recursive_form_map(copy(unique_ta_combo), [], True)
+		conditions += recursive_form_map(copy(unique_ta_combo), [], False)
+
+
+	print(conditions)
+
 
 	# Form all of the RSI Trades
 	# for x in range(10,90):
@@ -179,6 +249,12 @@ def form_strats():
 	# 		strats.append(
 	# 			Strategy("RSI Buy %i Sell %i"%(y, x), (rsi, rsi), open_args={"rsinum":x, 'lt':True, 'buy':False}, close_args={"rsinum":y, 'lt':False, 'buy':True})
 	# 		)
+
+	# open_condition = Condition(conditions=[
+	# 	(rsi, {"rsinum":70, 'lt':True})
+	# 	(ema_slow, {"above":False})
+	# ], buy=True)
+
 
 	open_condition = Condition(conditions={
 		rsi : {"rsinum":70, 'lt':True},
